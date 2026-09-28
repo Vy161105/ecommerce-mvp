@@ -24,7 +24,8 @@ export class PostgresUserRepository implements UserRepository {
         email,
         phone,
         rid,
-        membership_points
+        membership_points,
+        membership_tier
        FROM app_user
        WHERE username = $1
        LIMIT 1`,
@@ -47,7 +48,8 @@ export class PostgresUserRepository implements UserRepository {
         email,
         phone,
         rid,
-        membership_points
+        membership_points,
+        membership_tier
        FROM app_user
        WHERE uid = $1
        LIMIT 1`,
@@ -64,8 +66,16 @@ export class PostgresUserRepository implements UserRepository {
   async create(input: Omit<User, 'uid'>): Promise<User> {
     const result = await pool.query(
       `INSERT INTO app_user
-        (username, password, email, phone, rid, membership_points)
-       VALUES ($1, $2, $3, $4, $5, $6)
+        (
+          username,
+          password,
+          email,
+          phone,
+          rid,
+          membership_points,
+          membership_tier
+        )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING
         uid,
         username,
@@ -73,14 +83,16 @@ export class PostgresUserRepository implements UserRepository {
         email,
         phone,
         rid,
-        membership_points`,
+        membership_points,
+        membership_tier`,
       [
         input.username,
         input.password,
         input.email,
         input.phone,
         input.rid,
-        input.membership_points
+        input.membership_points,
+        input.membership_tier
       ]
     );
 
@@ -91,10 +103,15 @@ export class PostgresUserRepository implements UserRepository {
     uid: string,
     membershipPoints: number
   ): Promise<User | null> {
+    const membershipTier =
+      membershipPoints >= 100 ? 'MEMBER' : 'STANDARD';
+
     const result = await pool.query(
       `UPDATE app_user
-       SET membership_points = $1
-       WHERE uid = $2
+       SET
+        membership_points = $1,
+        membership_tier = $2
+       WHERE uid = $3
        RETURNING
         uid,
         username,
@@ -102,8 +119,9 @@ export class PostgresUserRepository implements UserRepository {
         email,
         phone,
         rid,
-        membership_points`,
-      [membershipPoints, uid]
+        membership_points,
+        membership_tier`,
+      [membershipPoints, membershipTier, uid]
     );
 
     if (result.rowCount === 0) {

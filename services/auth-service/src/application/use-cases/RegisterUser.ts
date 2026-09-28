@@ -44,7 +44,8 @@ export class RegisterUser {
       email: input.email,
       phone: input.phone ?? null,
       rid: role.rows[0].rid,
-      membership_points: 0
+      membership_points: 0,
+      membership_tier: 'STANDARD'
     });
 
     return user;

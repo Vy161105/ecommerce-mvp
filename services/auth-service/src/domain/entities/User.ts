@@ -1,3 +1,5 @@
+export type MembershipTier = 'STANDARD' | 'MEMBER';
+
 export type User = {
   uid: string;
   username: string;
@@ -6,4 +8,5 @@ export type User = {
   phone: string | null;
   rid: number;
   membership_points: number;
+  membership_tier: MembershipTier;
 };

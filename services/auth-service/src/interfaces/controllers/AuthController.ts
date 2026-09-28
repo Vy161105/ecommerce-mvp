@@ -42,14 +42,14 @@ export class AuthController {
     try {
       const user = await this.registerUser.execute(parsed.data);
 
-      // Không trả password_hash ra client
       return res.status(201).json({
         uid: user.uid,
         username: user.username,
         email: user.email,
         phone: user.phone,
         rid: user.rid,
-        membership_points: user.membership_points
+        membership_points: user.membership_points,
+        membership_tier: user.membership_tier
       });
     } catch (error) {
       if (error instanceof DuplicateUserError) {
@@ -113,7 +113,8 @@ export class AuthController {
         email: user.email,
         phone: user.phone,
         rid: user.rid,
-        membership_points: user.membership_points
+        membership_points: user.membership_points,
+        membership_tier: user.membership_tier
       });
     } catch (error) {
       console.error(error);
@@ -147,7 +148,8 @@ export class AuthController {
         email: user.email,
         phone: user.phone,
         rid: user.rid,
-        membership_points: user.membership_points
+        membership_points: user.membership_points,
+        membership_tier: user.membership_tier
       });
     } catch (error) {
       if (error instanceof InvalidMembershipPointsError) {
