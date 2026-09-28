@@ -1,19 +1,39 @@
-const { authorize } = require('./middleware/authorize');
-const { authenticate } = require('./middleware/authenticate');
-require('dotenv').config();
-
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const dotenv = require('dotenv');
+
+const { authenticate } = require('./middleware/authenticate');
+const { authorize } = require('./middleware/authorize');
+
+dotenv.config();
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
 
 const PRODUCT_SERVICE_URL =
   process.env.PRODUCT_SERVICE_URL || 'http://localhost:3002';
+
+app.use(express.json());
+
+
+// ====================
+// Health
+// ====================
+
+app.get('/health', (_req, res) => {
+  res.json({
+    service: 'api-gateway',
+    status: 'UP'
+  });
+});
+
+
+// ====================
+// Admin test
+// ====================
 
 app.get(
   '/api/test/admin',
@@ -27,70 +47,134 @@ app.get(
   }
 );
 
-// Auth Service
-app.use(
-  createProxyMiddleware({
-    target: AUTH_SERVICE_URL,
-    changeOrigin: true,
-    pathFilter: ['/api/auth/**'],
 
-    timeout: 10000,
-    proxyTimeout: 10000,
+// ====================
+// Auth Service Proxy
+// ====================
 
-    on: {
-      proxyReq: (proxyReq, req) => {
-        console.log(
-          `[Gateway] ${req.method} ${req.originalUrl} -> ${AUTH_SERVICE_URL}${req.originalUrl}`
-        );
+app.use('/api/auth', async (req, res) => {
+  try {
+    const url =
+      `${AUTH_SERVICE_URL}${req.originalUrl}`;
+
+    const response = await fetch(url, {
+      method: req.method,
+      headers: {
+        'Content-Type': 'application/json'
       },
+      body:
+        ['GET', 'HEAD'].includes(req.method)
+          ? undefined
+          : JSON.stringify(req.body)
+    });
 
-      error: (err, req, res) => {
-        console.error('[Gateway Auth Proxy Error]', err.message);
+    const text = await response.text();
 
-        if (!res.headersSent) {
-          res.status(502).json({
-            message: 'Bad Gateway',
-            error: err.message
-          });
-        }
-      }
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
     }
-  })
-);
 
+  } catch (error) {
+    console.error(
+      '[Gateway Auth Error]',
+      error.message
+    );
+
+    res.status(502).json({
+      message: 'Bad Gateway',
+      service: 'auth-service'
+    });
+  }
+});
+
+
+// ====================
 // Product Service
-app.use(
-  createProxyMiddleware({
-    target: PRODUCT_SERVICE_URL,
-    changeOrigin: true,
-    pathFilter: ['/api/products/**', '/api/products'],
+// ====================
 
-    timeout: 10000,
-    proxyTimeout: 10000,
+app.use('/api/products', async (req, res) => {
+  try {
+    const productPath =
+      req.originalUrl.replace(
+        /^\/api\/products/,
+        '/products'
+      );
 
-    on: {
-      proxyReq: (proxyReq, req) => {
-        console.log(
-          `[Gateway] ${req.method} ${req.originalUrl} -> ${PRODUCT_SERVICE_URL}${req.originalUrl.replace('/api', '')}`
-        );
+    const url =
+      `${PRODUCT_SERVICE_URL}${productPath}`;
+
+    console.log(
+      `[Gateway] ${req.method} ${req.originalUrl} -> ${url}`
+    );
+
+    const response = await fetch(url, {
+      method: req.method,
+
+      headers: {
+        'Content-Type': 'application/json'
       },
 
-      error: (err, req, res) => {
-        console.error('[Gateway Product Proxy Error]', err.message);
+      body:
+        ['GET', 'HEAD'].includes(req.method)
+          ? undefined
+          : JSON.stringify(req.body)
+    });
 
-        if (!res.headersSent) {
-          res.status(502).json({
-            message: 'Bad Gateway',
-            error: err.message
-          });
-        }
-      }
+    const text = await response.text();
+
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
     }
-  })
-);
+
+  } catch (error) {
+    console.error(
+      '[Gateway Product Error]',
+      error.message
+    );
+
+    res.status(502).json({
+      message: 'Bad Gateway',
+      service: 'product-service',
+      error: error.message
+    });
+  }
+});
+
+
+// ====================
+// 404
+// ====================
+
+app.use((req, res) => {
+  res.status(404).json({
+    message: 'Route not found',
+    path: req.originalUrl
+  });
+});
+
+
+// ====================
+// Start
+// ====================
 
 app.listen(PORT, () => {
-  console.log(`api-gateway listening on port ${PORT}`);
-  console.log(`auth-service target: ${AUTH_SERVICE_URL}`);
-  console.log(`product-service target: ${PRODUCT_SERVICE_URL}`);
+  console.log(
+    `api-gateway listening on port ${PORT}`
+  );
+
+  console.log(
+    `auth-service target: ${AUTH_SERVICE_URL}`
+  );
+
+  console.log(
+    `product-service target: ${PRODUCT_SERVICE_URL}`
+  );
 });
