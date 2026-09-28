@@ -13,7 +13,11 @@ services:
       - postgres_auth_data:/var/lib/postgresql/data
       - ./services/auth-service/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-auth_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-auth_db}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -32,7 +36,11 @@ services:
       - postgres_product_data:/var/lib/postgresql/data
       - ./services/product-service/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PRODUCT_POSTGRES_USER:-postgres} -d ${PRODUCT_POSTGRES_DB:-product_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${PRODUCT_POSTGRES_USER:-postgres} -d ${PRODUCT_POSTGRES_DB:-product_db}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -51,7 +59,34 @@ services:
       - postgres_order_data:/var/lib/postgresql/data
       - ./services/order-service/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${ORDER_POSTGRES_USER:-postgres} -d ${ORDER_POSTGRES_DB:-order_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${ORDER_POSTGRES_USER:-postgres} -d ${ORDER_POSTGRES_DB:-order_db}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-shipment:
+    image: postgres:16-alpine
+    container_name: ecommerce-postgres-shipment
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SHIPMENT_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${SHIPMENT_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${SHIPMENT_POSTGRES_DB:-shipment_db}
+    ports:
+      - "${SHIPMENT_POSTGRES_PORT:-5436}:5432"
+    volumes:
+      - postgres_shipment_data:/var/lib/postgresql/data
+      - ./services/shipment-service/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${SHIPMENT_POSTGRES_USER:-postgres} -d ${SHIPMENT_POSTGRES_DB:-shipment_db}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -60,3 +95,4 @@ volumes:
   postgres_auth_data:
   postgres_product_data:
   postgres_order_data:
+  postgres_shipment_data:

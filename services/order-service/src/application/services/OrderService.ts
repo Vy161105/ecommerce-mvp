@@ -5,6 +5,7 @@ import {
 
 import { ProductClient } from '../../infrastructure/clients/ProductClient';
 import { AuthClient } from '../../infrastructure/clients/AuthClient';
+import { ShipmentClient } from '../../infrastructure/clients/ShipmentClient';
 
 interface CreateOrderRequest {
   userId: string;
@@ -18,7 +19,8 @@ export class OrderService {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly productClient: ProductClient,
-    private readonly authClient: AuthClient
+    private readonly authClient: AuthClient,
+    private readonly shipmentClient: ShipmentClient
   ) {}
 
   async createOrder(input: CreateOrderRequest) {
@@ -79,6 +81,8 @@ export class OrderService {
         product.stock - item.quantity
       );
     }
+
+    await this.shipmentClient.createShipment(order.id);
 
     return order;
   }
