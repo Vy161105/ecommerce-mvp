@@ -90,6 +90,97 @@ app.get(
 
 
 // ====================
+// Auth - ADMIN get customer list
+// ====================
+
+app.get(
+  '/api/auth/users',
+  authenticate,
+  authorize(2),
+  async (_req, res) => {
+    try {
+      const response = await fetch(
+        `${AUTH_SERVICE_URL}/api/auth/users`
+      );
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
+      }
+    } catch (error) {
+      console.error(
+        '[Gateway Auth Error]',
+        error.message
+      );
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'auth-service'
+      });
+    }
+  }
+);
+
+
+// ====================
+// Auth - get user by id
+// ADMIN: any user
+// CUSTOMER: self only
+// ====================
+
+app.get(
+  '/api/auth/users/:id',
+  authenticate,
+
+  (req, res, next) => {
+    const isAdmin = req.user.rid === 2;
+    const isOwner = req.user.uid === req.params.id;
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({
+        message: 'Forbidden'
+      });
+    }
+
+    next();
+  },
+
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${AUTH_SERVICE_URL}/api/auth/users/${req.params.id}`
+      );
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
+      }
+    } catch (error) {
+      console.error(
+        '[Gateway Auth Error]',
+        error.message
+      );
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'auth-service'
+      });
+    }
+  }
+);
+
+
+// ====================
 // Auth - ADMIN update membership points
 // ====================
 
@@ -136,6 +227,7 @@ app.patch(
 
 // ====================
 // Auth Service
+// register + login
 // ====================
 
 app.use('/api/auth', async (req, res) => {
@@ -459,7 +551,7 @@ app.use(
   authenticate,
 
   // PATCH /api/shipments/:id/status
-  // chỉ ADMIN (2) hoặc SHIPMENT_STAFF (3)
+  // only ADMIN (2) or SHIPMENT_STAFF (3)
   (req, res, next) => {
     if (
       req.method === 'PATCH' &&

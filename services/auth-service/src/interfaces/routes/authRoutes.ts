@@ -24,6 +24,11 @@ router.post('/register', controller.register);
 router.post('/login', controller.login);
 
 router.get(
+  '/users',
+  controller.getCustomers
+);
+
+router.get(
   '/users/:id',
   controller.getUserById
 );

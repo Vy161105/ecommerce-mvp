@@ -95,6 +95,30 @@ export class AuthController {
     }
   };
 
+  getCustomers = async (_req: Request, res: Response) => {
+    try {
+      const customers = await this.userRepository.findCustomers();
+
+      return res.status(200).json(
+        customers.map((user) => ({
+          uid: user.uid,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          rid: user.rid,
+          membership_points: user.membership_points,
+          membership_tier: user.membership_tier
+        }))
+      );
+    } catch (error) {
+      console.error(error);
+
+      return res.status(500).json({
+        message: 'Internal server error'
+      });
+    }
+  };
+
   getUserById = async (req: Request, res: Response) => {
     try {
       const user = await this.userRepository.findById(

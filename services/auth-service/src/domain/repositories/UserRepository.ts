@@ -10,6 +10,8 @@ export interface UserRepository {
 
   findById(uid: string): Promise<User | null>;
 
+  findCustomers(): Promise<User[]>;
+
   create(input: Omit<User, 'uid'>): Promise<User>;
 
   updateMembershipPoints(

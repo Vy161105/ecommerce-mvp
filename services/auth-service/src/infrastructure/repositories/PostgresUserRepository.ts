@@ -63,6 +63,26 @@ export class PostgresUserRepository implements UserRepository {
     return result.rows[0] as User;
   }
 
+  async findCustomers(): Promise<User[]> {
+    const result = await pool.query(
+      `SELECT
+        u.uid,
+        u.username,
+        u.password,
+        u.email,
+        u.phone,
+        u.rid,
+        u.membership_points,
+        u.membership_tier
+       FROM app_user u
+       INNER JOIN role r ON r.rid = u.rid
+       WHERE r.rname = 'CUSTOMER'
+       ORDER BY u.username ASC`
+    );
+
+    return result.rows as User[];
+  }
+
   async create(input: Omit<User, 'uid'>): Promise<User> {
     const result = await pool.query(
       `INSERT INTO app_user
