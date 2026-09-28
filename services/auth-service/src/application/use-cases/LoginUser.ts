@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 
 import { LoginUserDto } from '../dto/LoginUserDto';
 import { UserRepository } from '../../domain/repositories/UserRepository';
@@ -36,20 +36,23 @@ export class LoginUser {
       throw new Error('JWT_SECRET is not configured');
     }
 
+    const expiresIn: SignOptions['expiresIn'] =
+      (process.env.JWT_EXPIRES_IN as SignOptions['expiresIn']) || '1d';
+
     const token = jwt.sign(
       {
         uid: user.uid,
         username: user.username,
-        rid: user.rid,
+        rid: user.rid
       },
       secret,
       {
-        expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+        expiresIn
       }
     );
 
     return {
-      accessToken: token,
+      accessToken: token
     };
   }
 }

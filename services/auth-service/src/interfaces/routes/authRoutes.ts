@@ -13,10 +13,13 @@ const userRepository = new PostgresUserRepository();
 
 const controller = new AuthController(
   new RegisterUser(userRepository),
-  new LoginUser(userRepository)
+  new LoginUser(userRepository),
+  userRepository
 );
 
 router.post('/register', controller.register);
 router.post('/login', controller.login);
+
+router.get('/users/:id', controller.getUserById);
 
 export default router;

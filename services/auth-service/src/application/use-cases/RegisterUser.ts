@@ -1,35 +1,52 @@
 import bcrypt from 'bcrypt';
-import { RegisterUserDto } from '../dto/RegisterUserDto';
-import { UserRepository } from '../../domain/repositories/UserRepository';
 import { pool } from '../../infrastructure/database/postgres';
+import { UserRepository } from '../../domain/repositories/UserRepository';
+import { RegisterUserDto } from '../dto/RegisterUserDto';
 
-export class DuplicateUserError extends Error {}
+export class DuplicateUserError extends Error {
+  constructor() {
+    super('Username or email already exists');
+    this.name = 'DuplicateUserError';
+  }
+}
 
 export class RegisterUser {
   constructor(private readonly users: UserRepository) {}
 
   async execute(input: RegisterUserDto) {
-    if (await this.users.existsByUsernameOrEmail(input.username, input.email)) {
-      throw new DuplicateUserError('Username or email already exists');
+    const existingUser = await pool.query(
+      `
+      SELECT uid
+      FROM app_user
+      WHERE username = $1 OR email = $2
+      LIMIT 1
+      `,
+      [input.username, input.email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      throw new DuplicateUserError();
     }
 
-    const role = await pool.query("SELECT rid FROM role WHERE rname = 'CUSTOMER' LIMIT 1");
-    if (role.rowCount === 0) throw new Error('Default CUSTOMER role is not configured');
+    const hashedPassword = await bcrypt.hash(input.password, 10);
 
-    const passwordHash = await bcrypt.hash(input.password, 12);
+    const role = await pool.query(
+      `SELECT rid FROM role WHERE rname = 'CUSTOMER' LIMIT 1`
+    );
+
+    if (role.rows.length === 0) {
+      throw new Error('CUSTOMER role not found');
+    }
+
     const user = await this.users.create({
       username: input.username,
-      password: passwordHash,
+      password: hashedPassword,
       email: input.email,
       phone: input.phone ?? null,
-      rid: role.rows[0].rid
+      rid: role.rows[0].rid,
+      membership_points: 0
     });
 
-    return {
-      uid: user.uid,
-      username: user.username,
-      email: user.email,
-      phone: user.phone
-    };
+    return user;
   }
 }

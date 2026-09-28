@@ -4,6 +4,7 @@ import {
 } from '../../infrastructure/repositories/OrderRepository';
 
 import { ProductClient } from '../../infrastructure/clients/ProductClient';
+import { AuthClient } from '../../infrastructure/clients/AuthClient';
 
 interface CreateOrderRequest {
   userId: string;
@@ -16,7 +17,8 @@ interface CreateOrderRequest {
 export class OrderService {
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly productClient: ProductClient
+    private readonly productClient: ProductClient,
+    private readonly authClient: AuthClient
   ) {}
 
   async createOrder(input: CreateOrderRequest) {
@@ -27,6 +29,8 @@ export class OrderService {
     if (!input.items || input.items.length === 0) {
       throw new Error('order must contain at least one item');
     }
+
+    const user = await this.authClient.getUserById(input.userId);
 
     const orderItems: CreateOrderInput['items'] = [];
 
@@ -47,10 +51,16 @@ export class OrderService {
         throw new Error('Insufficient stock');
       }
 
+      let unitPrice = Number(product.price);
+
+      if (user.membership_points >= 100) {
+        unitPrice = unitPrice * 0.9;
+      }
+
       orderItems.push({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: Number(product.price)
+        unitPrice
       });
     }
 

@@ -5,4 +5,5 @@ export type User = {
   email: string;
   phone: string | null;
   rid: number;
+  membership_points: number;
 };
