@@ -49,13 +49,12 @@ app.get(
 
 
 // ====================
-// Auth Service Proxy
+// Auth Service
 // ====================
 
 app.use('/api/auth', async (req, res) => {
   try {
-    const url =
-      `${AUTH_SERVICE_URL}${req.originalUrl}`;
+    const url = `${AUTH_SERVICE_URL}${req.originalUrl}`;
 
     const response = await fetch(url, {
       method: req.method,
@@ -79,10 +78,7 @@ app.use('/api/auth', async (req, res) => {
     }
 
   } catch (error) {
-    console.error(
-      '[Gateway Auth Error]',
-      error.message
-    );
+    console.error('[Gateway Auth Error]', error.message);
 
     res.status(502).json({
       message: 'Bad Gateway',
@@ -93,36 +89,14 @@ app.use('/api/auth', async (req, res) => {
 
 
 // ====================
-// Product Service
+// Product - GET public
 // ====================
 
-app.use('/api/products', async (req, res) => {
+app.get('/api/products', async (req, res) => {
   try {
-    const productPath =
-      req.originalUrl.replace(
-        /^\/api\/products/,
-        '/products'
-      );
-
-    const url =
-      `${PRODUCT_SERVICE_URL}${productPath}`;
-
-    console.log(
-      `[Gateway] ${req.method} ${req.originalUrl} -> ${url}`
+    const response = await fetch(
+      `${PRODUCT_SERVICE_URL}/products`
     );
-
-    const response = await fetch(url, {
-      method: req.method,
-
-      headers: {
-        'Content-Type': 'application/json'
-      },
-
-      body:
-        ['GET', 'HEAD'].includes(req.method)
-          ? undefined
-          : JSON.stringify(req.body)
-    });
 
     const text = await response.text();
 
@@ -135,18 +109,162 @@ app.use('/api/products', async (req, res) => {
     }
 
   } catch (error) {
-    console.error(
-      '[Gateway Product Error]',
-      error.message
-    );
+    console.error('[Gateway Product Error]', error.message);
 
     res.status(502).json({
       message: 'Bad Gateway',
-      service: 'product-service',
-      error: error.message
+      service: 'product-service'
     });
   }
 });
+
+
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const response = await fetch(
+      `${PRODUCT_SERVICE_URL}/products/${req.params.id}`
+    );
+
+    const text = await response.text();
+
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
+    }
+
+  } catch (error) {
+    console.error('[Gateway Product Error]', error.message);
+
+    res.status(502).json({
+      message: 'Bad Gateway',
+      service: 'product-service'
+    });
+  }
+});
+
+
+// ====================
+// Product - ADMIN only
+// ====================
+
+app.post(
+  '/api/products',
+  authenticate,
+  authorize(1),
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${PRODUCT_SERVICE_URL}/products`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(req.body)
+        }
+      );
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      try {
+        res.json(JSON.parse(text));
+      } catch {
+        res.send(text);
+      }
+
+    } catch (error) {
+      console.error('[Gateway Product Error]', error.message);
+
+      res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'product-service'
+      });
+    }
+  }
+);
+
+
+app.put(
+  '/api/products/:id',
+  authenticate,
+  authorize(1),
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${PRODUCT_SERVICE_URL}/products/${req.params.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(req.body)
+        }
+      );
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      try {
+        res.json(JSON.parse(text));
+      } catch {
+        res.send(text);
+      }
+
+    } catch (error) {
+      console.error('[Gateway Product Error]', error.message);
+
+      res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'product-service'
+      });
+    }
+  }
+);
+
+
+app.delete(
+  '/api/products/:id',
+  authenticate,
+  authorize(1),
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${PRODUCT_SERVICE_URL}/products/${req.params.id}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      if (text) {
+        try {
+          res.json(JSON.parse(text));
+        } catch {
+          res.send(text);
+        }
+      } else {
+        res.end();
+      }
+
+    } catch (error) {
+      console.error('[Gateway Product Error]', error.message);
+
+      res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'product-service'
+      });
+    }
+  }
+);
 
 
 // ====================
@@ -166,15 +284,7 @@ app.use((req, res) => {
 // ====================
 
 app.listen(PORT, () => {
-  console.log(
-    `api-gateway listening on port ${PORT}`
-  );
-
-  console.log(
-    `auth-service target: ${AUTH_SERVICE_URL}`
-  );
-
-  console.log(
-    `product-service target: ${PRODUCT_SERVICE_URL}`
-  );
+  console.log(`api-gateway listening on port ${PORT}`);
+  console.log(`auth-service target: ${AUTH_SERVICE_URL}`);
+  console.log(`product-service target: ${PRODUCT_SERVICE_URL}`);
 });
