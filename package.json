@@ -1,0 +1,10 @@
+{
+  "name": "ecommerce-mvp",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:auth": "npm --prefix services/auth-service run dev",
+    "build:auth": "npm --prefix services/auth-service run build",
+    "start:auth": "npm --prefix services/auth-service run start"
+  }
+}
