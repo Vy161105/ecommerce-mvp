@@ -18,5 +18,25 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-product:
+    image: postgres:16-alpine
+    container_name: ecommerce-postgres-product
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PRODUCT_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${PRODUCT_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${PRODUCT_POSTGRES_DB:-product_db}
+    ports:
+      - "${PRODUCT_POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres_product_data:/var/lib/postgresql/data
+      - ./services/product-service/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PRODUCT_POSTGRES_USER:-postgres} -d ${PRODUCT_POSTGRES_DB:-product_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres_auth_data:
+  postgres_product_data:
