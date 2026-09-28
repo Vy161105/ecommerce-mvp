@@ -40,9 +40,17 @@ export class AuthController {
     }
 
     try {
-      const result = await this.registerUser.execute(parsed.data);
+      const user = await this.registerUser.execute(parsed.data);
 
-      return res.status(201).json(result);
+      // Không trả password_hash ra client
+      return res.status(201).json({
+        uid: user.uid,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        rid: user.rid,
+        membership_points: user.membership_points
+      });
     } catch (error) {
       if (error instanceof DuplicateUserError) {
         return res.status(409).json({
