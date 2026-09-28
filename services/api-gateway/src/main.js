@@ -3,6 +3,15 @@ const dotenv = require('dotenv');
 
 const { authenticate } = require('./middleware/authenticate');
 const { authorize } = require('./middleware/authorize');
+const { rateLimit } = require('./middleware/rateLimit');
+
+const {
+  getProductsFromCache,
+  cacheProducts,
+  invalidateProductsCache
+} = require('./middleware/productCache');
+
+const { connectRedis } = require('./infrastructure/redis');
 
 dotenv.config();
 
@@ -22,7 +31,33 @@ const ORDER_SERVICE_URL =
 const SHIPMENT_SERVICE_URL =
   process.env.SHIPMENT_SERVICE_URL || 'http://localhost:3004';
 
+
+// ====================
+// Middleware
+// ====================
+
 app.use(express.json());
+
+app.use(rateLimit);
+
+
+// ====================
+// Logging
+// ====================
+
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+
+  res.on('finish', () => {
+    const duration = Date.now() - startedAt;
+
+    console.log(
+      `[Gateway] ${req.method} ${req.originalUrl} -> ${res.statusCode} ${duration}ms`
+    );
+  });
+
+  next();
+});
 
 
 // ====================
@@ -30,7 +65,7 @@ app.use(express.json());
 // ====================
 
 app.get('/health', (_req, res) => {
-  res.json({
+  return res.status(200).json({
     service: 'api-gateway',
     status: 'UP'
   });
@@ -46,7 +81,7 @@ app.get(
   authenticate,
   authorize(1),
   (req, res) => {
-    res.status(200).json({
+    return res.status(200).json({
       message: 'Admin access granted',
       user: req.user
     });
@@ -78,14 +113,17 @@ app.use('/api/auth', async (req, res) => {
     res.status(response.status);
 
     try {
-      res.json(JSON.parse(text));
+      return res.json(JSON.parse(text));
     } catch {
-      res.send(text);
+      return res.send(text);
     }
   } catch (error) {
-    console.error('[Gateway Auth Error]', error.message);
+    console.error(
+      '[Gateway Auth Error]',
+      error.message
+    );
 
-    res.status(502).json({
+    return res.status(502).json({
       message: 'Bad Gateway',
       service: 'auth-service'
     });
@@ -97,30 +135,51 @@ app.use('/api/auth', async (req, res) => {
 // Product - GET public
 // ====================
 
-app.get('/api/products', async (req, res) => {
-  try {
-    const response = await fetch(
-      `${PRODUCT_SERVICE_URL}/products`
-    );
-
-    const text = await response.text();
-
-    res.status(response.status);
-
+app.get(
+  '/api/products',
+  getProductsFromCache,
+  async (_req, res) => {
     try {
-      res.json(JSON.parse(text));
-    } catch {
-      res.send(text);
-    }
-  } catch (error) {
-    console.error('[Gateway Product Error]', error.message);
+      const response = await fetch(
+        `${PRODUCT_SERVICE_URL}/products`
+      );
 
-    res.status(502).json({
-      message: 'Bad Gateway',
-      service: 'product-service'
-    });
+      const text = await response.text();
+
+      if (!response.ok) {
+        res.status(response.status);
+
+        try {
+          return res.json(JSON.parse(text));
+        } catch {
+          return res.send(text);
+        }
+      }
+
+      let products;
+
+      try {
+        products = JSON.parse(text);
+      } catch {
+        return res.status(response.status).send(text);
+      }
+
+      await cacheProducts(products);
+
+      return res.status(response.status).json(products);
+    } catch (error) {
+      console.error(
+        '[Gateway Product Error]',
+        error.message
+      );
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'product-service'
+      });
+    }
   }
-});
+);
 
 
 app.get('/api/products/:id', async (req, res) => {
@@ -134,14 +193,17 @@ app.get('/api/products/:id', async (req, res) => {
     res.status(response.status);
 
     try {
-      res.json(JSON.parse(text));
+      return res.json(JSON.parse(text));
     } catch {
-      res.send(text);
+      return res.send(text);
     }
   } catch (error) {
-    console.error('[Gateway Product Error]', error.message);
+    console.error(
+      '[Gateway Product Error]',
+      error.message
+    );
 
-    res.status(502).json({
+    return res.status(502).json({
       message: 'Bad Gateway',
       service: 'product-service'
     });
@@ -172,17 +234,24 @@ app.post(
 
       const text = await response.text();
 
+      if (response.ok) {
+        await invalidateProductsCache();
+      }
+
       res.status(response.status);
 
       try {
-        res.json(JSON.parse(text));
+        return res.json(JSON.parse(text));
       } catch {
-        res.send(text);
+        return res.send(text);
       }
     } catch (error) {
-      console.error('[Gateway Product Error]', error.message);
+      console.error(
+        '[Gateway Product Error]',
+        error.message
+      );
 
-      res.status(502).json({
+      return res.status(502).json({
         message: 'Bad Gateway',
         service: 'product-service'
       });
@@ -210,17 +279,24 @@ app.put(
 
       const text = await response.text();
 
+      if (response.ok) {
+        await invalidateProductsCache();
+      }
+
       res.status(response.status);
 
       try {
-        res.json(JSON.parse(text));
+        return res.json(JSON.parse(text));
       } catch {
-        res.send(text);
+        return res.send(text);
       }
     } catch (error) {
-      console.error('[Gateway Product Error]', error.message);
+      console.error(
+        '[Gateway Product Error]',
+        error.message
+      );
 
-      res.status(502).json({
+      return res.status(502).json({
         message: 'Bad Gateway',
         service: 'product-service'
       });
@@ -244,21 +320,28 @@ app.delete(
 
       const text = await response.text();
 
+      if (response.ok) {
+        await invalidateProductsCache();
+      }
+
       res.status(response.status);
 
-      if (text) {
-        try {
-          res.json(JSON.parse(text));
-        } catch {
-          res.send(text);
-        }
-      } else {
-        res.end();
+      if (!text) {
+        return res.end();
+      }
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
       }
     } catch (error) {
-      console.error('[Gateway Product Error]', error.message);
+      console.error(
+        '[Gateway Product Error]',
+        error.message
+      );
 
-      res.status(502).json({
+      return res.status(502).json({
         message: 'Bad Gateway',
         service: 'product-service'
       });
@@ -268,96 +351,113 @@ app.delete(
 
 
 // ====================
-// Order Service - AUTH required
+// Order Service
 // ====================
 
-app.use('/api/orders', authenticate, async (req, res) => {
-  try {
-    const orderPath = req.originalUrl.replace(
-      /^\/api\/orders/,
-      ''
-    );
-
-    const url =
-      ORDER_SERVICE_URL +
-      '/api/orders' +
-      orderPath;
-
-    const response = await fetch(url, {
-      method: req.method,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': req.user.uid
-      },
-      body: ['GET', 'HEAD'].includes(req.method)
-        ? undefined
-        : JSON.stringify(req.body)
-    });
-
-    const text = await response.text();
-
-    res.status(response.status);
-
+app.use(
+  '/api/orders',
+  authenticate,
+  async (req, res) => {
     try {
-      res.json(JSON.parse(text));
-    } catch {
-      res.send(text);
+      const orderPath = req.originalUrl.replace(
+        /^\/api\/orders/,
+        ''
+      );
+
+      const url =
+        ORDER_SERVICE_URL +
+        '/api/orders' +
+        orderPath;
+
+      const response = await fetch(url, {
+        method: req.method,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': req.user.uid
+        },
+        body:
+          ['GET', 'HEAD'].includes(req.method)
+            ? undefined
+            : JSON.stringify(req.body)
+      });
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
+      }
+    } catch (error) {
+      console.error(
+        '[Gateway Order Error]',
+        error.message
+      );
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'order-service'
+      });
     }
-  } catch (error) {
-    console.error('[Gateway Order Error]', error.message);
-
-    res.status(502).json({
-      message: 'Bad Gateway',
-      service: 'order-service'
-    });
   }
-});
+);
 
 
 // ====================
-// Shipment Service - AUTH required
+// Shipment Service
 // ====================
 
-app.use('/api/shipments', authenticate, async (req, res) => {
-  try {
-    const shipmentPath = req.originalUrl.replace(
-      /^\/api\/shipments/,
-      ''
-    );
-
-    const url =
-      SHIPMENT_SERVICE_URL +
-      '/api/shipments' +
-      shipmentPath;
-
-    const response = await fetch(url, {
-      method: req.method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: ['GET', 'HEAD'].includes(req.method)
-        ? undefined
-        : JSON.stringify(req.body)
-    });
-
-    const text = await response.text();
-
-    res.status(response.status);
-
+app.use(
+  '/api/shipments',
+  authenticate,
+  async (req, res) => {
     try {
-      res.json(JSON.parse(text));
-    } catch {
-      res.send(text);
-    }
-  } catch (error) {
-    console.error('[Gateway Shipment Error]', error.message);
+      const shipmentPath = req.originalUrl.replace(
+        /^\/api\/shipments/,
+        ''
+      );
 
-    res.status(502).json({
-      message: 'Bad Gateway',
-      service: 'shipment-service'
-    });
+      const url =
+        SHIPMENT_SERVICE_URL +
+        '/api/shipments' +
+        shipmentPath;
+
+      const response = await fetch(url, {
+        method: req.method,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': req.user.uid
+        },
+        body:
+          ['GET', 'HEAD'].includes(req.method)
+            ? undefined
+            : JSON.stringify(req.body)
+      });
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
+      }
+    } catch (error) {
+      console.error(
+        '[Gateway Shipment Error]',
+        error.message
+      );
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'shipment-service'
+      });
+    }
   }
-});
+);
 
 
 // ====================
@@ -365,7 +465,7 @@ app.use('/api/shipments', authenticate, async (req, res) => {
 // ====================
 
 app.use((req, res) => {
-  res.status(404).json({
+  return res.status(404).json({
     message: 'Route not found',
     path: req.originalUrl
   });
@@ -376,10 +476,48 @@ app.use((req, res) => {
 // Start
 // ====================
 
-app.listen(PORT, () => {
-  console.log(`api-gateway listening on port ${PORT}`);
-  console.log(`auth-service target: ${AUTH_SERVICE_URL}`);
-  console.log(`product-service target: ${PRODUCT_SERVICE_URL}`);
-  console.log(`order-service target: ${ORDER_SERVICE_URL}`);
-  console.log(`shipment-service target: ${SHIPMENT_SERVICE_URL}`);
-});
+async function start() {
+  try {
+    await connectRedis();
+
+    console.log('[Gateway] Redis connected');
+
+    app.listen(PORT, () => {
+      console.log(
+        `api-gateway listening on port ${PORT}`
+      );
+
+      console.log(
+        `auth-service target: ${AUTH_SERVICE_URL}`
+      );
+
+      console.log(
+        `product-service target: ${PRODUCT_SERVICE_URL}`
+      );
+
+      console.log(
+        `order-service target: ${ORDER_SERVICE_URL}`
+      );
+
+      console.log(
+        `shipment-service target: ${SHIPMENT_SERVICE_URL}`
+      );
+
+      console.log(
+        `redis target: ${
+          process.env.REDIS_URL ||
+          'redis://localhost:6379'
+        }`
+      );
+    });
+  } catch (error) {
+    console.error(
+      '[Gateway] Failed to start:',
+      error
+    );
+
+    process.exit(1);
+  }
+}
+
+start();
