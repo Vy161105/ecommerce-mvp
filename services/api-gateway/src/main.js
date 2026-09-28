@@ -8,8 +8,12 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+
 const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+
+const PRODUCT_SERVICE_URL =
+  process.env.PRODUCT_SERVICE_URL || 'http://localhost:3002';
 
 app.get(
   '/api/test/admin',
@@ -23,11 +27,11 @@ app.get(
   }
 );
 
+// Auth Service
 app.use(
   createProxyMiddleware({
     target: AUTH_SERVICE_URL,
     changeOrigin: true,
-
     pathFilter: ['/api/auth/**'],
 
     timeout: 10000,
@@ -41,7 +45,38 @@ app.use(
       },
 
       error: (err, req, res) => {
-        console.error('[Gateway Proxy Error]', err.message);
+        console.error('[Gateway Auth Proxy Error]', err.message);
+
+        if (!res.headersSent) {
+          res.status(502).json({
+            message: 'Bad Gateway',
+            error: err.message
+          });
+        }
+      }
+    }
+  })
+);
+
+// Product Service
+app.use(
+  createProxyMiddleware({
+    target: PRODUCT_SERVICE_URL,
+    changeOrigin: true,
+    pathFilter: ['/api/products/**', '/api/products'],
+
+    timeout: 10000,
+    proxyTimeout: 10000,
+
+    on: {
+      proxyReq: (proxyReq, req) => {
+        console.log(
+          `[Gateway] ${req.method} ${req.originalUrl} -> ${PRODUCT_SERVICE_URL}${req.originalUrl.replace('/api', '')}`
+        );
+      },
+
+      error: (err, req, res) => {
+        console.error('[Gateway Product Proxy Error]', err.message);
 
         if (!res.headersSent) {
           res.status(502).json({
@@ -57,4 +92,5 @@ app.use(
 app.listen(PORT, () => {
   console.log(`api-gateway listening on port ${PORT}`);
   console.log(`auth-service target: ${AUTH_SERVICE_URL}`);
+  console.log(`product-service target: ${PRODUCT_SERVICE_URL}`);
 });
