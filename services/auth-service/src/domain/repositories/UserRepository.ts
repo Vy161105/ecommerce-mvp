@@ -11,4 +11,9 @@ export interface UserRepository {
   findById(uid: string): Promise<User | null>;
 
   create(input: Omit<User, 'uid'>): Promise<User>;
+
+  updateMembershipPoints(
+    uid: string,
+    membershipPoints: number
+  ): Promise<User | null>;
 }

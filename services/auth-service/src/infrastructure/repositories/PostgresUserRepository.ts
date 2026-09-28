@@ -86,4 +86,30 @@ export class PostgresUserRepository implements UserRepository {
 
     return result.rows[0] as User;
   }
+
+  async updateMembershipPoints(
+    uid: string,
+    membershipPoints: number
+  ): Promise<User | null> {
+    const result = await pool.query(
+      `UPDATE app_user
+       SET membership_points = $1
+       WHERE uid = $2
+       RETURNING
+        uid,
+        username,
+        password,
+        email,
+        phone,
+        rid,
+        membership_points`,
+      [membershipPoints, uid]
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return result.rows[0] as User;
+  }
 }

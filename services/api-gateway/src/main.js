@@ -79,12 +79,57 @@ app.get('/health', (_req, res) => {
 app.get(
   '/api/test/admin',
   authenticate,
-  authorize(1),
+  authorize(2),
   (req, res) => {
     return res.status(200).json({
       message: 'Admin access granted',
       user: req.user
     });
+  }
+);
+
+
+// ====================
+// Auth - ADMIN update membership points
+// ====================
+
+app.patch(
+  '/api/auth/users/:id/membership-points',
+  authenticate,
+  authorize(2),
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${AUTH_SERVICE_URL}/api/auth/users/${req.params.id}/membership-points`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(req.body)
+        }
+      );
+
+      const text = await response.text();
+
+      res.status(response.status);
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
+      }
+    } catch (error) {
+      console.error(
+        '[Gateway Auth Error]',
+        error.message
+      );
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'auth-service'
+      });
+    }
   }
 );
 
@@ -218,7 +263,7 @@ app.get('/api/products/:id', async (req, res) => {
 app.post(
   '/api/products',
   authenticate,
-  authorize(1),
+  authorize(2),
   async (req, res) => {
     try {
       const response = await fetch(
@@ -263,7 +308,7 @@ app.post(
 app.put(
   '/api/products/:id',
   authenticate,
-  authorize(1),
+  authorize(2),
   async (req, res) => {
     try {
       const response = await fetch(
@@ -308,7 +353,7 @@ app.put(
 app.delete(
   '/api/products/:id',
   authenticate,
-  authorize(1),
+  authorize(2),
   async (req, res) => {
     try {
       const response = await fetch(
