@@ -12,12 +12,12 @@ const shipmentController = new ShipmentController(shipmentService);
 
 router.post('/', shipmentController.create);
 
-router.get('/:id', shipmentController.getById);
-
 router.get(
   '/order/:orderId',
   shipmentController.getByOrderId
 );
+
+router.get('/:id', shipmentController.getById);
 
 router.patch(
   '/:id/status',

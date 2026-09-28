@@ -19,6 +19,9 @@ const PRODUCT_SERVICE_URL =
 const ORDER_SERVICE_URL =
   process.env.ORDER_SERVICE_URL || 'http://localhost:3003';
 
+const SHIPMENT_SERVICE_URL =
+  process.env.SHIPMENT_SERVICE_URL || 'http://localhost:3004';
+
 app.use(express.json());
 
 
@@ -79,7 +82,6 @@ app.use('/api/auth', async (req, res) => {
     } catch {
       res.send(text);
     }
-
   } catch (error) {
     console.error('[Gateway Auth Error]', error.message);
 
@@ -110,7 +112,6 @@ app.get('/api/products', async (req, res) => {
     } catch {
       res.send(text);
     }
-
   } catch (error) {
     console.error('[Gateway Product Error]', error.message);
 
@@ -137,7 +138,6 @@ app.get('/api/products/:id', async (req, res) => {
     } catch {
       res.send(text);
     }
-
   } catch (error) {
     console.error('[Gateway Product Error]', error.message);
 
@@ -179,7 +179,6 @@ app.post(
       } catch {
         res.send(text);
       }
-
     } catch (error) {
       console.error('[Gateway Product Error]', error.message);
 
@@ -218,7 +217,6 @@ app.put(
       } catch {
         res.send(text);
       }
-
     } catch (error) {
       console.error('[Gateway Product Error]', error.message);
 
@@ -257,7 +255,6 @@ app.delete(
       } else {
         res.end();
       }
-
     } catch (error) {
       console.error('[Gateway Product Error]', error.message);
 
@@ -276,8 +273,15 @@ app.delete(
 
 app.use('/api/orders', authenticate, async (req, res) => {
   try {
-    const orderPath = req.originalUrl.replace(/^\/api\/orders/, '');
-    const url = ORDER_SERVICE_URL + '/api/orders' + orderPath;
+    const orderPath = req.originalUrl.replace(
+      /^\/api\/orders/,
+      ''
+    );
+
+    const url =
+      ORDER_SERVICE_URL +
+      '/api/orders' +
+      orderPath;
 
     const response = await fetch(url, {
       method: req.method,
@@ -311,6 +315,52 @@ app.use('/api/orders', authenticate, async (req, res) => {
 
 
 // ====================
+// Shipment Service - AUTH required
+// ====================
+
+app.use('/api/shipments', authenticate, async (req, res) => {
+  try {
+    const shipmentPath = req.originalUrl.replace(
+      /^\/api\/shipments/,
+      ''
+    );
+
+    const url =
+      SHIPMENT_SERVICE_URL +
+      '/api/shipments' +
+      shipmentPath;
+
+    const response = await fetch(url, {
+      method: req.method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: ['GET', 'HEAD'].includes(req.method)
+        ? undefined
+        : JSON.stringify(req.body)
+    });
+
+    const text = await response.text();
+
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
+    }
+  } catch (error) {
+    console.error('[Gateway Shipment Error]', error.message);
+
+    res.status(502).json({
+      message: 'Bad Gateway',
+      service: 'shipment-service'
+    });
+  }
+});
+
+
+// ====================
 // 404
 // ====================
 
@@ -330,4 +380,6 @@ app.listen(PORT, () => {
   console.log(`api-gateway listening on port ${PORT}`);
   console.log(`auth-service target: ${AUTH_SERVICE_URL}`);
   console.log(`product-service target: ${PRODUCT_SERVICE_URL}`);
+  console.log(`order-service target: ${ORDER_SERVICE_URL}`);
+  console.log(`shipment-service target: ${SHIPMENT_SERVICE_URL}`);
 });
