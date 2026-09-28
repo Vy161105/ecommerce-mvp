@@ -16,6 +16,9 @@ const AUTH_SERVICE_URL =
 const PRODUCT_SERVICE_URL =
   process.env.PRODUCT_SERVICE_URL || 'http://localhost:3002';
 
+const ORDER_SERVICE_URL =
+  process.env.ORDER_SERVICE_URL || 'http://localhost:3003';
+
 app.use(express.json());
 
 
@@ -265,6 +268,46 @@ app.delete(
     }
   }
 );
+
+
+// ====================
+// Order Service - AUTH required
+// ====================
+
+app.use('/api/orders', authenticate, async (req, res) => {
+  try {
+    const orderPath = req.originalUrl.replace(/^\/api\/orders/, '');
+    const url = ORDER_SERVICE_URL + '/api/orders' + orderPath;
+
+    const response = await fetch(url, {
+      method: req.method,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': req.user.uid
+      },
+      body: ['GET', 'HEAD'].includes(req.method)
+        ? undefined
+        : JSON.stringify(req.body)
+    });
+
+    const text = await response.text();
+
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
+    }
+  } catch (error) {
+    console.error('[Gateway Order Error]', error.message);
+
+    res.status(502).json({
+      message: 'Bad Gateway',
+      service: 'order-service'
+    });
+  }
+});
 
 
 // ====================

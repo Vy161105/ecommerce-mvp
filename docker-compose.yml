@@ -37,6 +37,26 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-order:
+    image: postgres:16-alpine
+    container_name: ecommerce-postgres-order
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${ORDER_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${ORDER_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${ORDER_POSTGRES_DB:-order_db}
+    ports:
+      - "${ORDER_POSTGRES_PORT:-5435}:5432"
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+      - ./services/order-service/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ORDER_POSTGRES_USER:-postgres} -d ${ORDER_POSTGRES_DB:-order_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres_auth_data:
   postgres_product_data:
+  postgres_order_data:
