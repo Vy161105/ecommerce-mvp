@@ -13,11 +13,7 @@ services:
       - postgres_auth_data:/var/lib/postgresql/data
       - ./services/auth-service/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-auth_db}"
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-auth_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -36,11 +32,7 @@ services:
       - postgres_product_data:/var/lib/postgresql/data
       - ./services/product-service/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${PRODUCT_POSTGRES_USER:-postgres} -d ${PRODUCT_POSTGRES_DB:-product_db}"
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${PRODUCT_POSTGRES_USER:-postgres} -d ${PRODUCT_POSTGRES_DB:-product_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -59,11 +51,7 @@ services:
       - postgres_order_data:/var/lib/postgresql/data
       - ./services/order-service/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${ORDER_POSTGRES_USER:-postgres} -d ${ORDER_POSTGRES_DB:-order_db}"
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${ORDER_POSTGRES_USER:-postgres} -d ${ORDER_POSTGRES_DB:-order_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -82,11 +70,7 @@ services:
       - postgres_shipment_data:/var/lib/postgresql/data
       - ./services/shipment-service/db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${SHIPMENT_POSTGRES_USER:-postgres} -d ${SHIPMENT_POSTGRES_DB:-shipment_db}"
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${SHIPMENT_POSTGRES_USER:-postgres} -d ${SHIPMENT_POSTGRES_DB:-shipment_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -105,6 +89,122 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+    container_name: ecommerce-auth-service
+    restart: unless-stopped
+    env_file:
+      - ./services/auth-service/.env
+    environment:
+      AUTH_SERVICE_PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres-auth:5432/${POSTGRES_DB:-auth_db}
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    expose:
+      - "3001"
+
+  product-service:
+    build:
+      context: ./services/product-service
+    container_name: ecommerce-product-service
+    restart: unless-stopped
+    env_file:
+      - ./services/product-service/.env
+    environment:
+      PORT: 3002
+      PRODUCT_DB_HOST: postgres-product
+      PRODUCT_DB_PORT: 5432
+      PRODUCT_DB_NAME: ${PRODUCT_POSTGRES_DB:-product_db}
+      PRODUCT_DB_USER: ${PRODUCT_POSTGRES_USER:-postgres}
+      PRODUCT_DB_PASSWORD: ${PRODUCT_POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      postgres-product:
+        condition: service_healthy
+    expose:
+      - "3002"
+
+  shipment-service:
+    build:
+      context: ./services/shipment-service
+    container_name: ecommerce-shipment-service
+    restart: unless-stopped
+    env_file:
+      - ./services/shipment-service/.env
+    environment:
+      PORT: 3004
+      SHIPMENT_POSTGRES_HOST: postgres-shipment
+      SHIPMENT_POSTGRES_PORT: 5432
+      SHIPMENT_POSTGRES_USER: ${SHIPMENT_POSTGRES_USER:-postgres}
+      SHIPMENT_POSTGRES_PASSWORD: ${SHIPMENT_POSTGRES_PASSWORD:-postgres}
+      SHIPMENT_POSTGRES_DB: ${SHIPMENT_POSTGRES_DB:-shipment_db}
+    depends_on:
+      postgres-shipment:
+        condition: service_healthy
+    expose:
+      - "3004"
+
+  order-service:
+    build:
+      context: ./services/order-service
+    container_name: ecommerce-order-service
+    restart: unless-stopped
+    env_file:
+      - ./services/order-service/.env
+    environment:
+      PORT: 3003
+      ORDER_POSTGRES_HOST: postgres-order
+      ORDER_POSTGRES_PORT: 5432
+      ORDER_POSTGRES_USER: ${ORDER_POSTGRES_USER:-postgres}
+      ORDER_POSTGRES_PASSWORD: ${ORDER_POSTGRES_PASSWORD:-postgres}
+      ORDER_POSTGRES_DB: ${ORDER_POSTGRES_DB:-order_db}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      SHIPMENT_SERVICE_URL: http://shipment-service:3004
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      shipment-service:
+        condition: service_started
+    expose:
+      - "3003"
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+    container_name: ecommerce-api-gateway
+    restart: unless-stopped
+    env_file:
+      - ./services/api-gateway/.env
+    environment:
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      ORDER_SERVICE_URL: http://order-service:3003
+      SHIPMENT_SERVICE_URL: http://shipment-service:3004
+      REDIS_URL: redis://redis:6379
+      PRODUCT_CACHE_TTL_SECONDS: 30
+      RATE_LIMIT_WINDOW_SECONDS: 60
+      RATE_LIMIT_MAX_REQUESTS: 30
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      shipment-service:
+        condition: service_started
+    ports:
+      - "3000:3000"
 
 volumes:
   postgres_auth_data:

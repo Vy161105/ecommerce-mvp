@@ -457,6 +457,20 @@ app.use(
 app.use(
   '/api/shipments',
   authenticate,
+
+  // PATCH /api/shipments/:id/status
+  // chỉ ADMIN (2) hoặc SHIPMENT_STAFF (3)
+  (req, res, next) => {
+    if (
+      req.method === 'PATCH' &&
+      /^\/api\/shipments\/[^/]+\/status$/.test(req.originalUrl)
+    ) {
+      return authorize(2, 3)(req, res, next);
+    }
+
+    next();
+  },
+
   async (req, res) => {
     try {
       const shipmentPath = req.originalUrl.replace(
