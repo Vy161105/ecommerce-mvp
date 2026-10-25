@@ -1,3 +1,4 @@
+
 import {
   ProductRepository,
   CreateProductData,
@@ -22,12 +23,15 @@ export class ProductService {
       throw new Error('Product name is required');
     }
 
-    if (data.price < 0) {
-      throw new Error('Product price cannot be negative');
+    if (!Number.isFinite(data.price) || data.price < 0) {
+      throw new Error('Product price must be a valid non-negative number');
     }
 
-    if (data.stock !== undefined && data.stock < 0) {
-      throw new Error('Product stock cannot be negative');
+    if (
+      data.stock !== undefined &&
+      (!Number.isInteger(data.stock) || data.stock < 0)
+    ) {
+      throw new Error('Product stock must be a non-negative integer');
     }
 
     return this.productRepository.create({
@@ -39,15 +43,55 @@ export class ProductService {
   }
 
   async updateProduct(id: string, data: UpdateProductData) {
-    if (data.price !== undefined && data.price < 0) {
-      throw new Error('Product price cannot be negative');
+    if (
+      data.price !== undefined &&
+      (!Number.isFinite(data.price) || data.price < 0)
+    ) {
+      throw new Error('Product price must be a valid non-negative number');
     }
 
-    if (data.stock !== undefined && data.stock < 0) {
-      throw new Error('Product stock cannot be negative');
+    if (
+      data.stock !== undefined &&
+      (!Number.isInteger(data.stock) || data.stock < 0)
+    ) {
+      throw new Error('Product stock must be a non-negative integer');
     }
 
     return this.productRepository.update(id, data);
+  }
+
+  async decrementStock(id: string, quantity: number) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error('Quantity must be a positive integer');
+    }
+
+    const product = await this.productRepository.decrementStock(id, quantity);
+
+    if (!product) {
+      const existingProduct = await this.productRepository.findById(id);
+
+      if (!existingProduct) {
+        throw new Error('Product not found');
+      }
+
+      throw new Error('Insufficient stock');
+    }
+
+    return product;
+  }
+
+  async incrementStock(id: string, quantity: number) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error('Quantity must be a positive integer');
+    }
+
+    const product = await this.productRepository.incrementStock(id, quantity);
+
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
+    return product;
   }
 
   async deleteProduct(id: string) {

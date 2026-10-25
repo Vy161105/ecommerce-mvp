@@ -17,6 +17,10 @@ router.post('/', productController.create);
 
 router.put('/:id', productController.update);
 
+router.post('/:id/decrement-stock', productController.decrementStock);
+
+router.post('/:id/increment-stock', productController.incrementStock);
+
 router.delete('/:id', productController.delete);
 
 export default router;

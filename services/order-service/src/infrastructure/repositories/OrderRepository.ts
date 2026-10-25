@@ -1,3 +1,4 @@
+
 import { pool } from '../database/postgres';
 
 export interface CreateOrderItemInput {
@@ -33,7 +34,6 @@ export class OrderRepository {
       );
 
       const order = orderResult.rows[0];
-
       const items = [];
 
       for (const item of input.items) {
@@ -61,6 +61,31 @@ export class OrderRepository {
         ...order,
         items
       };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async deleteOrder(orderId: string) {
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        'DELETE FROM order_items WHERE order_id = $1',
+        [orderId]
+      );
+
+      await client.query(
+        'DELETE FROM orders WHERE id = $1',
+        [orderId]
+      );
+
+      await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

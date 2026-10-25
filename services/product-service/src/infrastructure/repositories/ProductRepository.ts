@@ -1,3 +1,4 @@
+
 import { pool } from '../database/postgres';
 
 export interface CreateProductData {
@@ -111,8 +112,53 @@ export class ProductRepository {
       ]
     );
 
-    return result.rows[0];
+    return result.rows[0] ?? null;
   }
+
+  async decrementStock(id: string, quantity: number) {
+    const result = await pool.query(
+      `UPDATE products
+       SET
+         stock = stock - $2,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+         AND stock >= $2
+       RETURNING
+         id,
+         name,
+         description,
+         price,
+         stock,
+         created_at,
+         updated_at`,
+      [id, quantity]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+
+  async incrementStock(id: string, quantity: number) {
+    const result = await pool.query(
+      `UPDATE products
+       SET
+         stock = stock + $2,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING
+         id,
+         name,
+         description,
+         price,
+         stock,
+         created_at,
+         updated_at`,
+      [id, quantity]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
 
   async delete(id: string) {
     const result = await pool.query(

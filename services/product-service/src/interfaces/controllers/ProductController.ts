@@ -120,6 +120,102 @@ export class ProductController {
     }
   };
 
+
+  decrementStock = async (req: Request, res: Response) => {
+    try {
+      const quantity = Number(req.body.quantity);
+
+      if (
+        req.body.quantity === undefined ||
+        req.body.quantity === null ||
+        req.body.quantity === '' ||
+        !Number.isInteger(quantity) ||
+        quantity <= 0
+      ) {
+        return res.status(400).json({
+          message: 'quantity must be a positive integer'
+        });
+      }
+
+      const product = await this.productService.decrementStock(
+        String(req.params.id),
+        quantity
+      );
+
+      return res.status(200).json(product);
+    } catch (error) {
+      console.error(error);
+
+      if (error instanceof Error) {
+        if (error.message === 'Product not found') {
+          return res.status(404).json({
+            message: error.message
+          });
+        }
+
+        if (
+          error.message === 'Insufficient stock' ||
+          error.message === 'Quantity must be a positive integer'
+        ) {
+          return res.status(400).json({
+            message: error.message
+          });
+        }
+      }
+
+      return res.status(500).json({
+        message: 'Internal server error'
+      });
+    }
+  };
+
+
+  incrementStock = async (req: Request, res: Response) => {
+    try {
+      const quantity = Number(req.body.quantity);
+
+      if (
+        req.body.quantity === undefined ||
+        req.body.quantity === null ||
+        req.body.quantity === '' ||
+        !Number.isInteger(quantity) ||
+        quantity <= 0
+      ) {
+        return res.status(400).json({
+          message: 'quantity must be a positive integer'
+        });
+      }
+
+      const product = await this.productService.incrementStock(
+        String(req.params.id),
+        quantity
+      );
+
+      return res.status(200).json(product);
+    } catch (error) {
+      console.error(error);
+
+      if (error instanceof Error) {
+        if (error.message === 'Product not found') {
+          return res.status(404).json({
+            message: error.message
+          });
+        }
+
+        if (error.message === 'Quantity must be a positive integer') {
+          return res.status(400).json({
+            message: error.message
+          });
+        }
+      }
+
+      return res.status(500).json({
+        message: 'Internal server error'
+      });
+    }
+  };
+
+
   delete = async (req: Request, res: Response) => {
     try {
       const product = await this.productService.deleteProduct(
