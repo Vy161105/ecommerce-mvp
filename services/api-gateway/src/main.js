@@ -442,6 +442,89 @@ app.put(
 );
 
 
+app.post(
+  '/api/products/:id/increment-stock',
+  authenticate,
+  authorize(2),
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${PRODUCT_SERVICE_URL}/products/${req.params.id}/increment-stock`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(req.body)
+        }
+      );
+
+      const text = await response.text();
+
+      if (response.ok) {
+        await invalidateProductsCache();
+      }
+
+      res.status(response.status);
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
+      }
+    } catch (error) {
+      console.error('[Gateway Product Error]', error.message);
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'product-service'
+      });
+    }
+  }
+);
+
+app.post(
+  '/api/products/:id/decrement-stock',
+  authenticate,
+  authorize(2),
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${PRODUCT_SERVICE_URL}/products/${req.params.id}/decrement-stock`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(req.body)
+        }
+      );
+
+      const text = await response.text();
+
+      if (response.ok) {
+        await invalidateProductsCache();
+      }
+
+      res.status(response.status);
+
+      try {
+        return res.json(JSON.parse(text));
+      } catch {
+        return res.send(text);
+      }
+    } catch (error) {
+      console.error('[Gateway Product Error]', error.message);
+
+      return res.status(502).json({
+        message: 'Bad Gateway',
+        service: 'product-service'
+      });
+    }
+  }
+);
+
+
 app.delete(
   '/api/products/:id',
   authenticate,
