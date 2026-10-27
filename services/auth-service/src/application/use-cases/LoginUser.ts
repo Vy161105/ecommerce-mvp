@@ -52,6 +52,8 @@ export class LoginUser {
     );
 
     return {
+      uid: user.uid,
+      username: user.username,
       accessToken: token
     };
   }
