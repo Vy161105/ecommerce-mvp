@@ -9,7 +9,7 @@ export interface Product {
   stock: number;
 }
 
-const protoPath = path.resolve(__dirname, '../../../proto/product.proto');
+const protoPath = path.resolve(__dirname, '../../../../../proto/product.proto');
 
 const packageDefinition = protoLoader.loadSync(protoPath, {
   keepCase: true,

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { ProductRepository } from './infrastructure/repositories/ProductRepository';
 import { ProductService } from './application/services/ProductService';
 
-const protoPath = path.resolve(__dirname, '../proto/product.proto');
+const protoPath = path.resolve(__dirname, '../../../proto/product.proto');
 
 const packageDefinition = protoLoader.loadSync(protoPath, {
   keepCase: true,

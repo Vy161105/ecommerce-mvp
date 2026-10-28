@@ -11,21 +11,35 @@ export class ShipmentClient {
     process.env.SHIPMENT_SERVICE_URL || 'http://localhost:3004';
 
   async createShipment(orderId: string): Promise<Shipment> {
+    const response = await fetch(`${this.baseUrl}/api/shipments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ orderId })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create shipment');
+    }
+
+    return (await response.json()) as Shipment;
+  }
+
+  async cancelShipment(shipmentId: string): Promise<Shipment> {
     const response = await fetch(
-      `${this.baseUrl}/api/shipments`,
+      `${this.baseUrl}/api/shipments/${encodeURIComponent(shipmentId)}/status`,
       {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          orderId
-        })
+        body: JSON.stringify({ status: 'CANCELLED' })
       }
     );
 
     if (!response.ok) {
-      throw new Error('Failed to create shipment');
+      throw new Error(`Failed to cancel shipment: HTTP ${response.status}`);
     }
 
     return (await response.json()) as Shipment;

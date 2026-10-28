@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package order;
+
+service OrderService {
+  rpc GetOrderById (GetOrderByIdRequest) returns (OrderResponse);
+  rpc GetOrdersByUserId (GetOrdersByUserIdRequest) returns (OrderListResponse);
+}
+
+message GetOrderByIdRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+message GetOrdersByUserIdRequest {
+  string user_id = 1;
+}
+
+message OrderItem {
+  string id = 1;
+  string order_id = 2;
+  string product_id = 3;
+  int32 quantity = 4;
+  string unit_price = 5;
+  string created_at = 6;
+}
+
+message OrderResponse {
+  string id = 1;
+  string user_id = 2;
+  string status = 3;
+  string total_amount = 4;
+  string created_at = 5;
+  string updated_at = 6;
+  repeated OrderItem items = 7;
+}
+
+message OrderListResponse {
+  repeated OrderResponse orders = 1;
+}

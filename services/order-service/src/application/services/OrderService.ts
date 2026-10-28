@@ -80,6 +80,7 @@ export class OrderService {
 
     const reservedItems: CreateOrderInput['items'] = [];
     let createdOrderId: string | null = null;
+    let createdShipmentId: string | null = null;
 
     try {
       // 1. Reserve stock.
@@ -101,12 +102,25 @@ export class OrderService {
       createdOrderId = order.id;
 
       // 3. Create shipment.
-      await this.shipmentClient.createShipment(order.id);
+      const shipment = await this.shipmentClient.createShipment(order.id);
+      createdShipmentId = shipment.id;
       await publishOrderCreated(order);
 
       return order;
     } catch (error) {
-      // 4. If an order was created, attempt to delete it.
+      // 4. Cancel shipment if it was created.
+      if (createdShipmentId) {
+        try {
+          await this.shipmentClient.cancelShipment(createdShipmentId);
+        } catch (cleanupError) {
+          console.error(
+            `Failed to cancel shipment ${createdShipmentId}:`,
+            cleanupError
+          );
+        }
+      }
+
+      // 5. If an order was created, attempt to delete it.
       if (createdOrderId) {
         try {
           await this.orderRepository.deleteOrder(createdOrderId);

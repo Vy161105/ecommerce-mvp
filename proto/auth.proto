@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc GetUserById (GetUserByIdRequest) returns (UserResponse);
+  rpc UpdateMembershipPoints (UpdateMembershipPointsRequest) returns (UserResponse);
+}
+
+message GetUserByIdRequest {
+  string uid = 1;
+}
+
+message UpdateMembershipPointsRequest {
+  string uid = 1;
+  int32 membership_points = 2;
+}
+
+message UserResponse {
+  string uid = 1;
+  string username = 2;
+  string email = 3;
+  string phone = 4;
+  int32 rid = 5;
+  int32 membership_points = 6;
+  string membership_tier = 7;
+}
