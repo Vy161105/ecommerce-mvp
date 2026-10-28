@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package product;
+
+service ProductService {
+  rpc GetProductById (ProductIdRequest) returns (ProductResponse);
+  rpc DecrementStock (StockRequest) returns (ProductResponse);
+  rpc IncrementStock (StockRequest) returns (ProductResponse);
+}
+
+message ProductIdRequest {
+  string id = 1;
+}
+
+message StockRequest {
+  string id = 1;
+  int32 quantity = 2;
+}
+
+message ProductResponse {
+  string id = 1;
+  string name = 2;
+  string price = 3;
+  int32 stock = 4;
+}

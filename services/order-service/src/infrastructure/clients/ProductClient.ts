@@ -1,3 +1,6 @@
+import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
+import path from 'node:path';
 
 export interface Product {
   id: string;
@@ -6,77 +9,66 @@ export interface Product {
   stock: number;
 }
 
+const protoPath = path.resolve(__dirname, '../../../proto/product.proto');
+
+const packageDefinition = protoLoader.loadSync(protoPath, {
+  keepCase: true,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true
+});
+
+const loaded = grpc.loadPackageDefinition(packageDefinition) as any;
+const ProductGrpcService = loaded.product.ProductService;
+
 export class ProductClient {
-  private readonly baseUrl =
-    process.env.PRODUCT_SERVICE_URL || 'http://localhost:3002';
+  private readonly client: any;
+
+  constructor() {
+    const address =
+      process.env.PRODUCT_SERVICE_GRPC_URL || 'localhost:50051';
+
+    this.client = new ProductGrpcService(
+      address,
+      grpc.credentials.createInsecure()
+    );
+  }
+
+  private call<T>(method: string, request: object): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.client[method](request, (error: grpc.ServiceError | null, result: T) => {
+        if (error) {
+          reject(new Error(error.details || error.message));
+          return;
+        }
+
+        resolve(result);
+      });
+    });
+  }
 
   async getProductById(productId: string): Promise<Product> {
-    const response = await fetch(
-      `${this.baseUrl}/products/${productId}`
-    );
-
-    if (!response.ok) {
-      throw new Error('Product not found');
-    }
-
-    return (await response.json()) as Product;
+    return this.call<Product>('GetProductById', { id: productId });
   }
 
   async decrementStock(
     productId: string,
     quantity: number
   ): Promise<Product> {
-    const response = await fetch(
-      `${this.baseUrl}/products/${productId}/decrement-stock`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ quantity })
-      }
-    );
-
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const message =
-        result && typeof result.message === 'string'
-          ? result.message
-          : 'Failed to decrement product stock';
-
-      throw new Error(message);
-    }
-
-    return result as Product;
+    return this.call<Product>('DecrementStock', {
+      id: productId,
+      quantity
+    });
   }
 
   async incrementStock(
     productId: string,
     quantity: number
   ): Promise<Product> {
-    const response = await fetch(
-      `${this.baseUrl}/products/${productId}/increment-stock`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ quantity })
-      }
-    );
-
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const message =
-        result && typeof result.message === 'string'
-          ? result.message
-          : 'Failed to restore product stock';
-
-      throw new Error(message);
-    }
-
-    return result as Product;
+    return this.call<Product>('IncrementStock', {
+      id: productId,
+      quantity
+    });
   }
 }
