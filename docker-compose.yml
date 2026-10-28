@@ -128,6 +128,7 @@ services:
       - ./services/product-service/.env
     environment:
       PORT: 3002
+      GRPC_PORT: 50051
       PRODUCT_DB_HOST: postgres-product
       PRODUCT_DB_PORT: 5432
       PRODUCT_DB_NAME: ${PRODUCT_POSTGRES_DB:-product_db}
@@ -138,6 +139,7 @@ services:
         condition: service_healthy
     expose:
       - "3002"
+      - "50051"
 
   shipment-service:
     build:
@@ -173,6 +175,7 @@ services:
       ORDER_POSTGRES_DB: ${ORDER_POSTGRES_DB:-order_db}
       AUTH_SERVICE_URL: http://auth-service:3001
       PRODUCT_SERVICE_URL: http://product-service:3002
+      PRODUCT_SERVICE_GRPC_URL: product-service:50051
       SHIPMENT_SERVICE_URL: http://shipment-service:3004
       KAFKA_BROKERS: kafka:9092
     depends_on:

@@ -1,3 +1,4 @@
+import './grpcServer';
 import express from 'express';
 import dotenv from 'dotenv';
 import { pool } from './infrastructure/database/postgres';
